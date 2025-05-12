@@ -10,6 +10,13 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  http: ^0.13.5
+  provider: ^6.0.5
+  fl_chart: ^0.63.0
+  shared_preferences: ^2.2.2
+  image_picker: ^1.0.4
+  intl: ^0.18.1
+
 
 dev_dependencies:
   flutter_test:
