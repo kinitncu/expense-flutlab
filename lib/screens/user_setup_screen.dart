@@ -16,6 +16,7 @@ class _UserSetupScreenState extends State<UserSetupScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _currencyOptions = ['₱ PHP', '\$ USD', '€ EUR'];
+
   String _selectedCurrency = '₱ PHP';
   String? _avatarBase64;
 
@@ -24,22 +25,20 @@ class _UserSetupScreenState extends State<UserSetupScreen> {
     final XFile? image = await picker.pickImage(source: ImageSource.gallery);
     if (image != null) {
       final bytes = await image.readAsBytes();
-      _avatarBase64 = base64Encode(bytes);
-      setState(() {});
+      setState(() {
+        _avatarBase64 = base64Encode(bytes);
+      });
     }
   }
 
   Future<void> _submit() async {
-    print("Submitting setup form...");
-
     if (!_formKey.currentState!.validate()) {
-      print("Form is invalid");
       return;
     }
+
     if (_avatarBase64 == null) {
-      print("No avatar selected");
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please select an avatar image.')),
+        SnackBar(content: Text('Please select a profile picture.')),
       );
       return;
     }
@@ -53,8 +52,6 @@ class _UserSetupScreenState extends State<UserSetupScreen> {
           : _emailController.text.trim(),
     );
 
-    print("Insert user response: $userId");
-
     if (userId != null) {
       Navigator.pushReplacement(
         context,
@@ -62,7 +59,7 @@ class _UserSetupScreenState extends State<UserSetupScreen> {
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to save profile.')),
+        SnackBar(content: Text('❌ Failed to save profile.')),
       );
     }
   }
@@ -80,54 +77,91 @@ class _UserSetupScreenState extends State<UserSetupScreen> {
           );
 
     return Scaffold(
-      body: Padding(
-        padding: EdgeInsets.all(24),
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            children: [
-              SizedBox(height: 30),
-              Center(
-                child: Text(
-                  "Set Up Your Profile",
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+      body: SafeArea(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Form(
+            key: _formKey,
+            child: ListView(
+              children: [
+                SizedBox(height: 30),
+                Center(
+                  child: Text(
+                    "Set Up Your Profile",
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
-              ),
-              SizedBox(height: 20),
-              GestureDetector(
-                onTap: _pickImage,
-                child: Center(child: avatarWidget),
-              ),
-              SizedBox(height: 10),
-              Center(child: Text("Tap avatar to select picture")),
-              SizedBox(height: 20),
-              TextFormField(
-                controller: _nameController,
-                decoration: InputDecoration(labelText: "Your Name"),
-                validator: (value) =>
-                    value == null || value.isEmpty ? 'Name is required' : null,
-              ),
-              SizedBox(height: 10),
-              TextFormField(
-                controller: _emailController,
-                decoration: InputDecoration(labelText: "Email (optional)"),
-                keyboardType: TextInputType.emailAddress,
-              ),
-              SizedBox(height: 10),
-              DropdownButtonFormField<String>(
-                value: _selectedCurrency,
-                decoration: InputDecoration(labelText: "Preferred Currency"),
-                items: _currencyOptions
-                    .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                    .toList(),
-                onChanged: (val) => setState(() => _selectedCurrency = val!),
-              ),
-              SizedBox(height: 30),
-              ElevatedButton(
-                onPressed: _submit,
-                child: Text("Save & Continue"),
-              ),
-            ],
+                SizedBox(height: 20),
+
+                // Avatar Picker
+                GestureDetector(
+                  onTap: _pickImage,
+                  child: Center(child: avatarWidget),
+                ),
+                SizedBox(height: 10),
+                Center(
+                  child: Text(
+                    "Tap to select avatar",
+                    style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                  ),
+                ),
+                SizedBox(height: 20),
+
+                // Name
+                TextFormField(
+                  controller: _nameController,
+                  decoration: InputDecoration(
+                    labelText: "Your Name",
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (value) => value == null || value.isEmpty
+                      ? 'Name is required'
+                      : null,
+                ),
+                SizedBox(height: 14),
+
+                // Email
+                TextFormField(
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: InputDecoration(
+                    labelText: "Email (optional)",
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                SizedBox(height: 14),
+
+                // Currency Picker
+                DropdownButtonFormField<String>(
+                  value: _selectedCurrency,
+                  decoration: InputDecoration(
+                    labelText: "Preferred Currency",
+                    border: OutlineInputBorder(),
+                  ),
+                  items: _currencyOptions
+                      .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                      .toList(),
+                  onChanged: (val) => setState(() => _selectedCurrency = val!),
+                ),
+                SizedBox(height: 30),
+
+                // Save Button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _submit,
+                    icon: Icon(Icons.check_circle),
+                    label: Text("Save & Continue"),
+                    style: ElevatedButton.styleFrom(
+                      padding: EdgeInsets.symmetric(vertical: 14),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

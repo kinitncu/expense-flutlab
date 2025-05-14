@@ -31,7 +31,7 @@ class _AllowanceSetupScreenState extends State<AllowanceSetupScreen> {
 
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Allowance saved')),
+        SnackBar(content: Text('✅ Allowance saved')),
       );
       Navigator.pushReplacement(
         context,
@@ -39,7 +39,7 @@ class _AllowanceSetupScreenState extends State<AllowanceSetupScreen> {
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to save allowance')),
+        SnackBar(content: Text('❌ Failed to save allowance')),
       );
     }
   }
@@ -57,44 +57,80 @@ class _AllowanceSetupScreenState extends State<AllowanceSetupScreen> {
   }
 
   @override
+  void dispose() {
+    _amountController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text("Set Allowance")),
       body: Padding(
-        padding: EdgeInsets.all(24),
+        padding: EdgeInsets.all(20),
         child: Form(
           key: _formKey,
           child: ListView(
             children: [
-              TextFormField(
-                controller: _amountController,
-                decoration: InputDecoration(labelText: "Allowance Amount"),
-                keyboardType: TextInputType.number,
-                validator: (val) =>
-                    val == null || val.isEmpty ? 'Amount required' : null,
+              Text(
+                "Enter your allowance settings:",
+                style: TextStyle(fontWeight: FontWeight.bold),
               ),
               SizedBox(height: 16),
+
+              // Allowance Amount
+              TextFormField(
+                controller: _amountController,
+                decoration: InputDecoration(
+                  labelText: "Allowance Amount (₱)",
+                  border: OutlineInputBorder(),
+                  hintText: "e.g. 500.00",
+                ),
+                keyboardType: TextInputType.numberWithOptions(decimal: true),
+                validator: (val) =>
+                    val == null || val.isEmpty ? 'Amount is required' : null,
+              ),
+              SizedBox(height: 20),
+
+              // Frequency Dropdown
               DropdownButtonFormField<String>(
                 value: _selectedFrequency,
-                decoration: InputDecoration(labelText: "Frequency"),
+                decoration: InputDecoration(
+                  labelText: "Allowance Frequency",
+                  border: OutlineInputBorder(),
+                ),
                 items: ['daily', 'weekly', 'monthly']
                     .map((f) => DropdownMenuItem(
-                        value: f, child: Text(f.toUpperCase())))
+                          value: f,
+                          child: Text(f.toUpperCase()),
+                        ))
                     .toList(),
                 onChanged: (val) => setState(() => _selectedFrequency = val!),
               ),
-              SizedBox(height: 16),
+              SizedBox(height: 20),
+
+              // Start Date Picker
               ListTile(
+                contentPadding: EdgeInsets.zero,
                 title: Text(
-                    "Start Date: ${DateFormat.yMMMd().format(_startDate)}"),
+                    "Start Date: ${DateFormat.yMMMMd().format(_startDate)}"),
                 trailing: Icon(Icons.calendar_today),
                 onTap: _pickDate,
               ),
-              SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: _submit,
-                child: Text("Save Allowance"),
-              )
+              SizedBox(height: 30),
+
+              // Submit Button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _submit,
+                  icon: Icon(Icons.check_circle),
+                  label: Text("Save Allowance"),
+                  style: ElevatedButton.styleFrom(
+                    padding: EdgeInsets.symmetric(vertical: 14),
+                  ),
+                ),
+              ),
             ],
           ),
         ),

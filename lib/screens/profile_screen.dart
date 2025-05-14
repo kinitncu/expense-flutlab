@@ -1,8 +1,11 @@
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
+
 import '../services/api_service.dart';
+import '../providers/theme_provider.dart';
+import 'set_category_limits_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -22,15 +25,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
-    _avatarBase64 = "test"; // <- for debugging only
+    _loadUser();
   }
 
   Future<void> _loadUser() async {
     final user = await ApiService.getUser(userId);
-    _nameController.text = user['name'] ?? '';
-    _selectedCurrency = user['currency'] ?? '₱ PHP';
-    _avatarBase64 = user['avatar'];
-    setState(() {});
+    setState(() {
+      _nameController.text = user['name'] ?? '';
+      _selectedCurrency = user['currency'] ?? '₱ PHP';
+      _avatarBase64 = user['avatar'];
+    });
   }
 
   Future<void> _saveProfile() async {
@@ -41,25 +45,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
       currency: _selectedCurrency,
     );
 
-    if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Profile updated successfully')),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to update profile')),
-      );
-    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(success
+            ? 'Profile updated successfully'
+            : 'Failed to update profile'),
+      ),
+    );
   }
 
   Future<void> _pickImage() async {
-    final ImagePicker picker = ImagePicker();
+    final picker = ImagePicker();
     final XFile? image = await picker.pickImage(source: ImageSource.gallery);
 
     if (image != null) {
       final bytes = await image.readAsBytes();
-      _avatarBase64 = base64Encode(bytes);
-      setState(() {});
+      setState(() {
+        _avatarBase64 = base64Encode(bytes);
+      });
     }
   }
 
@@ -70,18 +73,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
             radius: 50,
             backgroundImage: MemoryImage(base64Decode(_avatarBase64!)),
           )
-        : CircleAvatar(
+        : const CircleAvatar(
             radius: 50,
             child: Icon(Icons.person, size: 50),
           );
 
+    final themeProvider = Provider.of<ThemeProvider>(context);
+
     return Scaffold(
-      appBar: AppBar(title: Text("Profile Settings")),
-      body: Padding(
-        padding: EdgeInsets.all(16),
+      appBar: AppBar(title: const Text("Profile Settings")),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
-          child: ListView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Center(
                 child: GestureDetector(
@@ -89,24 +95,46 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   child: avatarWidget,
                 ),
               ),
-              SizedBox(height: 10),
-              Center(child: Text("Tap avatar to change")),
-              SizedBox(height: 20),
+              const SizedBox(height: 10),
+              const Center(child: Text("Tap avatar to change")),
+              const SizedBox(height: 20),
               TextFormField(
                 controller: _nameController,
-                decoration: InputDecoration(labelText: "Name"),
+                decoration: const InputDecoration(labelText: "Name"),
               ),
-              SizedBox(height: 10),
+              const SizedBox(height: 10),
               DropdownButtonFormField<String>(
                 value: _selectedCurrency,
                 items: _currencyOptions
                     .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                     .toList(),
                 onChanged: (val) => setState(() => _selectedCurrency = val!),
-                decoration: InputDecoration(labelText: "Preferred Currency"),
+                decoration:
+                    const InputDecoration(labelText: "Preferred Currency"),
               ),
-              SizedBox(height: 20),
-              ElevatedButton(onPressed: _saveProfile, child: Text("Save")),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: _saveProfile,
+                child: const Text("Save Changes"),
+              ),
+              const SizedBox(height: 20),
+              const Divider(),
+              ListTile(
+                leading: const Icon(Icons.settings),
+                title: const Text("Set Category Limits"),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => SetCategoryLimitsScreen()),
+                  );
+                },
+              ),
+              SwitchListTile(
+                title: const Text("Dark Mode"),
+                value: themeProvider.isDarkMode,
+                onChanged: (_) => themeProvider.toggleTheme(),
+              ),
             ],
           ),
         ),

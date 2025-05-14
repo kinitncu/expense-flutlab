@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  static const String baseUrl = "http://localhost/expense_api";
+  static const String baseUrl = "http://localhost/expense_api/api";
 
   static Future<bool> addExpense({
     required int userId,
@@ -12,7 +12,7 @@ class ApiService {
     required String note,
   }) async {
     final response = await http.post(
-      Uri.parse('$baseUrl/add_expense.php'),
+      Uri.parse('$baseUrl/post/add_expense.php'),
       body: jsonEncode({
         "user_id": userId,
         "category": category,
@@ -28,7 +28,7 @@ class ApiService {
 
   static Future<List<Map<String, dynamic>>> getExpenses(int userId) async {
     final response = await http.get(
-      Uri.parse('$baseUrl/get_expenses.php?user_id=$userId'),
+      Uri.parse('$baseUrl/get/get_expenses.php?user_id=$userId'),
     );
 
     if (response.statusCode == 200) {
@@ -39,9 +39,23 @@ class ApiService {
     }
   }
 
+  static Future<List<double>> getYearlyAverages(int userId) async {
+    final response = await http
+        .get(Uri.parse('$baseUrl/get/get_yearly_averages.php?user_id=$userId'));
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data
+          .map((e) => double.tryParse(e['average_spending'].toString()) ?? 0.0)
+          .toList();
+    } else {
+      return [];
+    }
+  }
+
   static Future<Map<String, dynamic>> getCurrentAllowance(int userId) async {
     final response = await http.get(
-      Uri.parse('$baseUrl/get_current_allowance.php?user_id=$userId'),
+      Uri.parse('$baseUrl/get/get_current_allowance.php?user_id=$userId'),
     );
 
     if (response.statusCode == 200) {
@@ -53,7 +67,7 @@ class ApiService {
 
   static Future<bool> updateExpense(Map<String, dynamic> expense) async {
     final response = await http.post(
-      Uri.parse('$baseUrl/update_expense.php'),
+      Uri.parse('$baseUrl/put/update_expense.php'),
       body: jsonEncode(expense),
       headers: {"Content-Type": "application/json"},
     );
@@ -62,7 +76,7 @@ class ApiService {
 
   static Future<bool> deleteExpense(int id) async {
     final response = await http.post(
-      Uri.parse('$baseUrl/delete_expense.php'),
+      Uri.parse('$baseUrl/delete/delete_expense.php'),
       body: jsonEncode({"id": id}),
       headers: {"Content-Type": "application/json"},
     );
@@ -76,7 +90,7 @@ class ApiService {
     required String note,
   }) async {
     final response = await http.post(
-      Uri.parse('$baseUrl/log_emergency.php'),
+      Uri.parse('$baseUrl/post/log_emergency.php'),
       body: jsonEncode({
         "user_id": userId,
         "amount": amount,
@@ -90,7 +104,7 @@ class ApiService {
 
   static Future<List<Map<String, dynamic>>> getEmergencies(int userId) async {
     final response = await http.get(
-      Uri.parse('$baseUrl/get_emergencies.php?user_id=$userId'),
+      Uri.parse('$baseUrl/get/get_emergencies.php?user_id=$userId'),
     );
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
@@ -104,29 +118,34 @@ class ApiService {
     required int userId,
     required String category,
     required double limitAmount,
+    required String duration,
   }) async {
     final response = await http.post(
-      Uri.parse('$baseUrl/set_category_limit.php'),
+      Uri.parse('$baseUrl/post/set_category_limit.php'),
+      headers: {"Content-Type": "application/json"},
       body: jsonEncode({
         "user_id": userId,
         "category": category,
         "limit_amount": limitAmount,
+        "duration": duration,
       }),
-      headers: {"Content-Type": "application/json"},
     );
     return jsonDecode(response.body)['success'];
   }
 
-  static Future<Map<String, double>> getCategoryLimits(int userId) async {
+  static Future<Map<String, double>> getCategoryLimits(
+      int userId, String duration) async {
     final response = await http.get(
-      Uri.parse('$baseUrl/get_category_limits.php?user_id=$userId'),
+      Uri.parse(
+          '$baseUrl/get/get_category_limits.php?user_id=$userId&duration=$duration'),
     );
 
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
       return {
         for (var item in data)
-          item['category']: double.parse(item['limit_amount'].toString())
+          item['category']:
+              double.tryParse(item['limit_amount'].toString()) ?? 0.0
       };
     } else {
       return {};
@@ -141,7 +160,7 @@ class ApiService {
     double carryOver = 0,
   }) async {
     final response = await http.post(
-      Uri.parse('$baseUrl/add_allowance.php'),
+      Uri.parse('$baseUrl/post/add_allowance.php'),
       body: jsonEncode({
         "user_id": userId,
         "amount": amount,
@@ -156,8 +175,8 @@ class ApiService {
 
   static Future<Map<String, dynamic>> getUser([int? userId]) async {
     final url = userId != null
-        ? '$baseUrl/get_user.php?user_id=$userId'
-        : '$baseUrl/get_user.php';
+        ? '$baseUrl/get/get_user.php?user_id=$userId'
+        : '$baseUrl/get/get_user.php';
 
     final response = await http.get(Uri.parse(url));
 
@@ -176,7 +195,7 @@ class ApiService {
     String? email,
   }) async {
     final response = await http.post(
-      Uri.parse('$baseUrl/update_user.php'),
+      Uri.parse('$baseUrl/put/update_user.php'),
       body: jsonEncode({
         "user_id": userId,
         "name": name,
@@ -186,6 +205,7 @@ class ApiService {
       }),
       headers: {"Content-Type": "application/json"},
     );
+    print("Update response: ${response.body}");
     return jsonDecode(response.body)['success'];
   }
 
@@ -196,7 +216,7 @@ class ApiService {
     String? email,
   }) async {
     final response = await http.post(
-      Uri.parse('$baseUrl/insert_user.php'),
+      Uri.parse('$baseUrl/post/insert_user.php'),
       body: jsonEncode({
         "name": name,
         "avatar": avatar,

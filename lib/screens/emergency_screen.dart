@@ -11,70 +11,157 @@ class EmergencyScreen extends StatefulWidget {
 
 class _EmergencyScreenState extends State<EmergencyScreen> {
   final _formKey = GlobalKey<FormState>();
-  double _amount = 0;
-  String _note = '';
+  final _amountController = TextEditingController();
+  final _noteController = TextEditingController();
   DateTime _selectedDate = DateTime.now();
+  int userId = 1;
+  List<Map<String, dynamic>> _emergencies = [];
 
-  Future<void> _submit() async {
-    if (_formKey.currentState!.validate()) {
-      _formKey.currentState!.save();
-      final date = DateFormat('yyyy-MM-dd').format(_selectedDate);
-      final success = await ApiService.logEmergency(
-        userId: 1,
-        amount: _amount,
-        date: date,
-        note: _note,
-      );
-      if (success) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text("Emergency Logged")));
-        _formKey.currentState!.reset();
-      } else {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text("Failed to log emergency")));
-      }
-    }
+  @override
+  void initState() {
+    super.initState();
+    _loadEmergencies();
   }
 
-  void _pickDate() async {
+  Future<void> _loadEmergencies() async {
+    final data = await ApiService.getEmergencies(userId);
+    setState(() {
+      _emergencies = data;
+    });
+  }
+
+  Future<void> _pickDate() async {
     final picked = await showDatePicker(
       context: context,
       initialDate: _selectedDate,
       firstDate: DateTime(2020),
-      lastDate: DateTime(2030),
+      lastDate: DateTime.now(),
     );
-    if (picked != null) setState(() => _selectedDate = picked);
+    if (picked != null) {
+      setState(() => _selectedDate = picked);
+    }
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final formattedDate = DateFormat('yyyy-MM-dd').format(_selectedDate);
+
+    final success = await ApiService.logEmergency(
+      userId: userId,
+      amount: double.parse(_amountController.text.trim()),
+      date: formattedDate,
+      note: _noteController.text.trim(),
+    );
+
+    if (success) {
+      _amountController.clear();
+      _noteController.clear();
+      setState(() => _selectedDate = DateTime.now());
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('✅ Emergency expense logged')),
+      );
+
+      _loadEmergencies();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('❌ Failed to log emergency expense')),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _amountController.dispose();
+    _noteController.dispose();
+    super.dispose();
+  }
+
+  Widget _buildEmergencyItem(Map<String, dynamic> e) {
+    final dateLabel = e['date'] ?? e['emergency_date'] ?? 'Unknown Date';
+    final parsed = DateTime.tryParse(dateLabel);
+    final displayDate =
+        parsed != null ? DateFormat.yMMMMd().format(parsed) : dateLabel;
+
+    final amount = double.tryParse(e['amount'].toString()) ?? 0;
+    final note = e['note'] ?? '';
+
+    return ListTile(
+      leading: Icon(Icons.warning_amber, color: Colors.deepOrange),
+      title: Text("₱${amount.toStringAsFixed(2)}"),
+      subtitle: Text(note.isNotEmpty ? "$note\n$displayDate" : displayDate),
+      isThreeLine: note.isNotEmpty,
+      dense: true,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(title: Text("Emergency Expenses")),
       body: Padding(
-        padding: EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: Column(children: [
-            TextFormField(
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(labelText: "Amount"),
-              validator: (val) =>
-                  val == null || val.isEmpty ? "Required" : null,
-              onSaved: (val) => _amount = double.parse(val!),
+        padding: const EdgeInsets.all(16),
+        child: ListView(
+          children: [
+            Text("➕ Log Emergency Expense",
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            SizedBox(height: 10),
+            Form(
+              key: _formKey,
+              child: Column(
+                children: [
+                  TextFormField(
+                    controller: _amountController,
+                    decoration: InputDecoration(
+                      labelText: "Amount (₱)",
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType:
+                        TextInputType.numberWithOptions(decimal: true),
+                    validator: (val) =>
+                        val == null || val.isEmpty ? 'Enter amount' : null,
+                  ),
+                  SizedBox(height: 10),
+                  TextFormField(
+                    controller: _noteController,
+                    decoration: InputDecoration(
+                      labelText: "Note (optional)",
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  SizedBox(height: 10),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                        "Date: ${DateFormat.yMMMMd().format(_selectedDate)}"),
+                    trailing: Icon(Icons.calendar_today),
+                    onTap: _pickDate,
+                  ),
+                  SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _submit,
+                      icon: Icon(Icons.check),
+                      label: Text("Add Emergency Expense"),
+                    ),
+                  ),
+                ],
+              ),
             ),
-            TextFormField(
-              decoration: InputDecoration(labelText: "Note"),
-              onSaved: (val) => _note = val ?? '',
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text("Date: ${DateFormat.yMMMd().format(_selectedDate)}"),
-                TextButton(onPressed: _pickDate, child: Text("Pick Date"))
-              ],
-            ),
-            SizedBox(height: 20),
-            ElevatedButton(onPressed: _submit, child: Text("Log Emergency")),
-          ]),
+            SizedBox(height: 30),
+            Divider(),
+            Text("📋 Emergency History",
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            SizedBox(height: 10),
+            if (_emergencies.isEmpty)
+              Center(
+                child: Text("No emergency expenses logged yet."),
+              )
+            else
+              ..._emergencies.map(_buildEmergencyItem),
+          ],
         ),
       ),
     );
